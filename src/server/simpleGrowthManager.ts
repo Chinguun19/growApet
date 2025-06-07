@@ -1,5 +1,6 @@
 import { TweenService, Workspace, ServerScriptService, ServerStorage, RunService, PathfindingService, PhysicsService } from "@rbxts/services";
-import { Rare } from "./ScaleRarity";
+import { Rare } from "./Modules/ScaleRarity";
+import { CollectionService } from "@rbxts/services";
 
 interface AnimalModule {
     growAnimal: (cropName: string, plr: Player, pos: Vector3, properties: AnimalProperties, seed: Tool) => void;
@@ -7,7 +8,7 @@ interface AnimalModule {
 }
 
 interface AnimalProperties {
-	Scale: number;
+	Multiplier: number;
 	Modifier?: string;
 }
 
@@ -93,47 +94,56 @@ function GiveAnimal(player: Player, tool: Tool): void {
 }
 
 function AddPrompt(mainAnimal: Model, distance: number, animalTool: Tool): void {
-	print("AddPrompt called");
-	print("Main Animal:", mainAnimal.Name);
-	print("Distance:", distance);
+	print(`AddPrompt called for ${mainAnimal.Name}`);
 
 	const newPrompt = new Instance("ProximityPrompt");
-	newPrompt.ActionText = "Catch";
+	// Changed ActionText to be more descriptive
+	newPrompt.ActionText = "Harvest";
+	newPrompt.ObjectText = mainAnimal.Name;
 	newPrompt.MaxActivationDistance = distance;
 	newPrompt.RequiresLineOfSight = false;
 
-	
-	if (mainAnimal) {
-		print("Model found:", mainAnimal.Name);
-	} else {
-		warn("No model found in mainAnimal");
-	}
-
 	if (mainAnimal?.PrimaryPart) {
-		print("PrimaryPart found:", mainAnimal.PrimaryPart.Name);
 		newPrompt.Parent = mainAnimal.PrimaryPart;
 	} else {
-		warn("Model does not have a PrimaryPart");
+		warn(`Model ${mainAnimal.Name} does not have a PrimaryPart for the prompt.`);
+		return;
 	}
 
 	newPrompt.Triggered.Connect((player: Player) => {
-		print("Prompt triggered by:", player.Name);
+		print(`Prompt triggered by: ${player.Name}`);
+
+		// --- NEW LOGIC START ---
+
+		// 1. Get the player's character and currently equipped tool
+		const character = player.Character;
+		const equippedTool = character?.FindFirstChildOfClass("Tool");
+
+		// 2. Check if the player is holding the correct harvester tool
+		if (!equippedTool || equippedTool.GetAttribute("IsHarvester") !== true) {
+			print(`❌ Harvest failed: ${player.Name} is not holding a harvester tool.`);
+			// Optional: you could send a notification to the player here.
+			return;
+		}
+
+		print(`✅ Player ${player.Name} is holding a valid harvester tool.`);
+
+		// 3. Check if the player is the owner of the animal
 		const itemOwner = mainAnimal.Parent?.GetAttribute("USERID") as number;
-		print("Item owner UserId:", itemOwner);
-		print("Triggering player UserId:", player.UserId);
+		print(`Item owner UserId: ${itemOwner}, Triggering player UserId: ${player.UserId}`);
 
 		if (itemOwner === player.UserId) {
-			print("Owner match! Giving animal.");
+			print("✅ Owner match! Harvesting animal.");
 			newPrompt.Destroy();
             mainAnimal.Destroy();
-			GiveAnimal(player, animalTool);
-			print("Gave main animal.");
+			GiveAnimal(player, animalTool); // Give the animal *item* tool
+			print(`Gave ${animalTool.Name} to player.`);
 		} else {
-			print("Owner mismatch. Prompt ignored.");
+			print("❌ Owner mismatch. Harvest ignored.");
 		}
+		// --- NEW LOGIC END ---
 	});
 }
-
 
 
 
@@ -160,6 +170,7 @@ function scaleModelGradually(
 	textLabel?: TextLabel
 ): Promise<void> {
 	return new Promise((resolve) => {
+    print(`Scaling ${model} to ${targetScale}, duration: ${duration}`)
 		if (!model || !model.IsA("Model")) return resolve();
 
 		const scalableModel = model as unknown as { GetScale: (self: unknown) => number };
@@ -218,7 +229,7 @@ const AnimalModule: AnimalModule = {
     seed: Tool
   ): void => {
     print(`📦 Starting growAnimal: cropName=${cropName}, player=${plr.Name}`);
-
+    print(properties)
     const plot = FindPen(plr.UserId);
     if (!plot) {
       warn(`❌ No plot found for player: ${plr.Name}`);
@@ -228,7 +239,7 @@ const AnimalModule: AnimalModule = {
     const Eggs = ServerStorage.WaitForChild("Eggs") as Folder;
     const Animals = ServerStorage.WaitForChild("Animals") as Folder;
 
-    const eggTemplate = Eggs.FindFirstChild(`${cropName}Egg`) as Model;
+    const eggTemplate = Eggs.FindFirstChild(`${cropName}`) as Model;
     const animalTemplate = Animals.FindFirstChild(cropName) as Model;
 
     if (!eggTemplate) {
@@ -292,17 +303,21 @@ const AnimalModule: AnimalModule = {
       animal.Name = cropName;
       animal.Parent = plot;
       animal.PivotTo(new CFrame(adjustedPos.add(new Vector3(0, 0.5, 0))));
+      animal.SetAttribute("Mutation", properties.Modifier);
+      animal.SetAttribute("TargetScaling", properties.Multiplier)
 
       const defaultValue = (animal.GetAttribute("DEFAULT_VALUE") as number) || 30;
 
-
+      print("Base:", properties.Multiplier, "Multiplier:", properties.Modifier, defaultValue); 
       const animalTool = new Instance("Tool");
       animalTool.Name = cropName;
-      animalTool.SetAttribute("SellingPrice", defaultValue * properties.Scale);
-      animalTool.SetAttribute("Scale", properties.Scale);
+      animalTool.SetAttribute("SellingPrice", defaultValue * properties.Multiplier);
+      animalTool.SetAttribute("Scale", properties.Multiplier);
       animalTool.SetAttribute("Modifier", properties.Modifier || "None");
       animalTool.SetAttribute("USERID", plr.UserId);
+      CollectionService.AddTag(animalTool, "Egg")
 
+      print(animalTool.GetAttribute("SellingPrice"))
       // Add UI to the new animal
       const growthGui = billboardGui.Clone();
       growthGui.Parent = animal;
@@ -315,7 +330,7 @@ const AnimalModule: AnimalModule = {
       // Call the improved scaling function
       scaleModelGradually(
         animal,
-        properties.Scale,
+        properties.Multiplier,
         animal.GetAttribute("GROWTH_TIME") as number || GROWTH_TIME,
         growthLabel
       );

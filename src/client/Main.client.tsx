@@ -1,29 +1,13 @@
+import { Players } from "@rbxts/services";
 import React from "@rbxts/react";
-import { createPortal, createRoot } from "@rbxts/react-roblox";
-import { MoneyUI } from "./moneyUi";
-import { AnimalGrowthUI } from "./AnimalGrowthUI";
+import UIReloader from "./UIReloader";
+import { CashDisplay } from "./moneyUi";
 
-// Wait for the LocalPlayer's PlayerGui
-const Players = game.GetService("Players");
 const player = Players.LocalPlayer;
-const playerGui = player.WaitForChild("PlayerGui") as PlayerGui;
+const gui = new Instance("ScreenGui");
+gui.IgnoreGuiInset = true;
+gui.ResetOnSpawn = false;
+gui.Name = "MainUI";
+gui.Parent = player.WaitForChild("PlayerGui");
 
-// Create a ScreenGui to hold our UI
-const screenGui = new Instance("ScreenGui");
-screenGui.Name = "ReactCounterGui";
-screenGui.ResetOnSpawn = false;
-screenGui.Parent = playerGui;
-
-// Main App component to combine all UI elements
-function App() {
-    return (
-        <>
-            <MoneyUI />
-            <AnimalGrowthUI />
-        </>
-    );
-}
-
-// Mount the React component
-const root = createRoot(screenGui);
-root.render(createPortal(<App />, screenGui));
+UIReloader(gui, () => <CashDisplay />);

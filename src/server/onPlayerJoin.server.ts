@@ -1,5 +1,5 @@
 import { Players, Workspace, ReplicatedStorage, ServerStorage } from "@rbxts/services";
-import { Rare } from "./ScaleRarity";
+import { Rare } from "./Modules/ScaleRarity";
 import AnimalModule from "./simpleGrowthManager";
 import { PhysicsService } from "@rbxts/services";
 
@@ -132,11 +132,11 @@ BuyCropEvent.OnServerEvent.Connect((plr: Player, ...args: unknown[]) => {
 	cash.Value -= price;
 
 	// Give seed
-	const seedName = `${cropName} Seed`;
-	const cropSeeds = ServerStorage.FindFirstChild("CropSeeds");
-	if (!cropSeeds) return;
+	const eggName = `${cropName} Egg`;
+	const cropEggs = ServerStorage.FindFirstChild("AnimalEggs");
+	if (!cropEggs) return;
 	
-	const seedTemplate = cropSeeds.FindFirstChild(seedName) as Tool;
+	const seedTemplate = cropEggs.FindFirstChild(eggName) as Tool;
 	if (!seedTemplate) return;
 
 	const backpack = plr.FindFirstChild("Backpack");
@@ -146,7 +146,7 @@ BuyCropEvent.OnServerEvent.Connect((plr: Player, ...args: unknown[]) => {
 	seed.Parent = backpack;
 	
 	// Optional: Add feedback
-	print(`${plr.Name} bought ${seedName} for ${price} cash`);
+	print(`${plr.Name} bought ${eggName} for ${price} cash`);
 });
 
 // // Plant Seed
@@ -165,12 +165,13 @@ PlantSeedEvent.OnServerEvent.Connect((plr: Player, ...args: unknown[]) => {
 	if (!cropName) return;
 
 	seed.Destroy();
+	print(cropName)
+	const cloned = (ServerStorage.WaitForChild("AnimalEggs") as Folder)
+		.FindFirstChild(`${cropName} Egg`)?.Clone();
 
-	const cloned = (ServerStorage.WaitForChild("CropModels") as Folder)
-		.FindFirstChild(cropName)?.Clone();
-
-	const properties = Rare.PickRandom(cropName) as { Scale: number; Modifier?: string } | undefined;
+	const properties = Rare.PickRandom(cropName) as { Multiplier: number; Modifier?: string } | undefined;
 	if (cloned && cloned.IsA("Tool") && properties) {
+		
 		
 		
 		const cropModel = cloned as Tool;

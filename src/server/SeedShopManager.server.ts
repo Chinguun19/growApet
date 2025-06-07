@@ -25,23 +25,23 @@ function IsInStock(chance: number): boolean {
 
 function PickCrops(): CropTable {
 	return {
-		["Carrot"]: {
+		["Chicken"]: {
 			IsInStock: true,
 			StockAmount: math.random(5, 25),
 		},
-		["Blueberry"]: {
+		["Ice"]: {
 			IsInStock: IsInStock(80),
 			StockAmount: math.random(1, 8),
 		},
-		["Watermelon"]: {
+		["Jungle"]: {
 			IsInStock: IsInStock(30),
 			StockAmount: math.random(1, 5),
 		},
-		["Bamboo"]: {
+		["Mystic"]: {
 			IsInStock: IsInStock(20),
 			StockAmount: math.random(5, 25),
 		},
-		["Eggplant"]: {
+		["Savannah"]: {
 			IsInStock: IsInStock(5),
 			StockAmount: math.random(1, 3),
 		},
